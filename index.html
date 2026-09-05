@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Daily volatility scans of the S&amp;P 500, Nasdaq-100 and liquid ETFs.">
+<title>Volatility Desk &mdash; 2026-09-05</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Cool-biased neutrals chosen against the blue pole rather than a default
+     grey. Blue/red are the CVD-validated diverging pair the repo's reports
+     use — green/red is the trading convention but is exactly the pair
+     red-green colourblind readers cannot separate. */
+  :root {
+    color-scheme: light;
+    --ground:#eef1f4; --surface:#ffffff; --raised:#f7f9fb;
+    --ink:#0d1117; --ink-2:#59636e; --ink-3:#8c96a1;
+    --line:#dde3e9; --line-soft:#e9edf1;
+    --up:#2a78d6; --down:#e34948; --flag:#b07000; --flag-bg:rgba(250,178,25,.14);
+    --meter:#2a78d6; --meter-track:#dde3e9;
+    --chip:rgba(13,17,23,.05);
+    --shadow:0 1px 2px rgba(13,17,23,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground:#0d1013; --surface:#171b20; --raised:#1e232a;
+      --ink:#eef2f6; --ink-2:#9aa5b1; --ink-3:#6e7883;
+      --line:#252b33; --line-soft:#1f242b;
+      --up:#3987e5; --down:#e66767; --flag:#fab219; --flag-bg:rgba(250,178,25,.12);
+      --meter:#3987e5; --meter-track:#252b33;
+      --chip:rgba(255,255,255,.06);
+      --shadow:none;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground:#0d1013; --surface:#171b20; --raised:#1e232a;
+    --ink:#eef2f6; --ink-2:#9aa5b1; --ink-3:#6e7883;
+    --line:#252b33; --line-soft:#1f242b;
+    --up:#3987e5; --down:#e66767; --flag:#fab219; --flag-bg:rgba(250,178,25,.12);
+    --meter:#3987e5; --meter-track:#252b33;
+    --chip:rgba(255,255,255,.06);
+    --shadow:none;
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size:15px; line-height:1.45; -webkit-font-smoothing:antialiased;
+  }
+  .mono { font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+          font-variant-numeric:tabular-nums; }
+
+  .shell { max-width:560px; margin:0 auto; padding:0 0 56px; }
+  @media (min-width:900px) { .shell { max-width:940px; } }
+
+  /* ---- masthead ---- */
+  header.top { padding:22px 16px 14px; }
+  .kicker { font-size:11px; letter-spacing:.13em; text-transform:uppercase;
+            color:var(--ink-3); font-weight:600; }
+  h1 { font-size:25px; line-height:1.15; margin:5px 0 6px; font-weight:700;
+       letter-spacing:-.02em; text-wrap:balance; }
+  .asof { color:var(--ink-2); font-size:13.5px; }
+  .asof b { color:var(--ink); font-weight:600; }
+  .freshness { margin-top:7px; color:var(--ink-3); font-size:12.5px; }
+
+  /* ---- scan switcher ---- */
+  .tabs { position:sticky; top:0; z-index:20; background:var(--ground);
+          padding:6px 16px 10px; border-bottom:1px solid var(--line-soft); }
+  .tabrow { display:flex; gap:6px; }
+  .tab {
+    flex:1; appearance:none; border:1px solid var(--line); background:var(--surface);
+    color:var(--ink-2); border-radius:9px; padding:9px 6px; cursor:pointer;
+    font-family:inherit; font-size:13px; font-weight:600; line-height:1.25;
+    min-height:46px; transition:background .12s, color .12s, border-color .12s;
+  }
+  .tab .sub { display:block; font-size:10.5px; font-weight:500; color:var(--ink-3);
+              margin-top:2px; letter-spacing:.02em; }
+  .tab[aria-selected="true"] { background:var(--ink); color:var(--surface); border-color:var(--ink); }
+  .tab[aria-selected="true"] .sub { color:rgba(255,255,255,.62); }
+  :root[data-theme="dark"] .tab[aria-selected="true"] .sub,
+  :root:not([data-theme="light"]) .tab[aria-selected="true"] .sub { color:rgba(13,16,19,.65); }
+  .tab:focus-visible { outline:2px solid var(--up); outline-offset:2px; }
+
+  /* ---- section pills ---- */
+  .pills { display:flex; gap:6px; flex-wrap:wrap; padding:12px 16px 2px; }
+  .pill {
+    appearance:none; border:1px solid var(--line); background:transparent;
+    color:var(--ink-2); border-radius:999px; padding:6px 13px; cursor:pointer;
+    font-family:inherit; font-size:12.5px; font-weight:500; min-height:34px;
+  }
+  .pill[aria-selected="true"] { background:var(--chip); color:var(--ink);
+                                border-color:var(--ink-3); font-weight:600; }
+  .pill:focus-visible { outline:2px solid var(--up); outline-offset:2px; }
+  .blurb { padding:8px 16px 2px; color:var(--ink-2); font-size:12.5px; }
+
+  /* ---- the list ---- */
+  .list { padding:10px 16px 0; display:grid; gap:8px; }
+  @media (min-width:900px) { .list { grid-template-columns:1fr 1fr; } }
+
+  .row {
+    background:var(--surface); border:1px solid var(--line); border-radius:11px;
+    padding:12px 13px; box-shadow:var(--shadow); display:block;
+    text-decoration:none; color:inherit;
+  }
+  .r1 { display:flex; align-items:baseline; gap:9px; }
+  .rank { font-size:11.5px; color:var(--ink-3); min-width:17px; font-weight:600; }
+  .sym { font-size:18px; font-weight:600; letter-spacing:.01em; }
+  .etf { font-size:9.5px; letter-spacing:.08em; text-transform:uppercase;
+         color:var(--ink-3); border:1px solid var(--line); border-radius:4px;
+         padding:1px 4px; font-weight:600; }
+  .lead { margin-left:auto; font-size:18px; font-weight:600; }
+  .lead.pos { color:var(--up); } .lead.neg { color:var(--down); }
+  .leadlab { font-size:10px; color:var(--ink-3); text-transform:uppercase;
+             letter-spacing:.07em; display:block; text-align:right; font-weight:600;
+             margin-bottom:-1px; }
+
+  .r2 { display:flex; align-items:center; gap:8px; margin-top:9px; }
+  .track { flex:1; height:5px; border-radius:3px; background:var(--meter-track); overflow:hidden; }
+  .fill { height:100%; background:var(--meter); border-radius:0 3px 3px 0; }
+  .scoreval { font-size:12px; color:var(--ink-2); font-weight:600; min-width:56px; }
+
+  .stats { display:flex; flex-wrap:wrap; gap:2px 14px; margin-top:9px;
+           padding-top:9px; border-top:1px solid var(--line-soft); }
+  .stat { font-size:12px; color:var(--ink-2); }
+  .stat b { color:var(--ink); font-weight:600; }
+
+  .tags { display:flex; flex-wrap:wrap; gap:4px; margin-top:9px; }
+  .tag { font-size:11px; padding:2px 7px; border-radius:5px; background:var(--chip);
+         color:var(--ink-2); }
+  .tag.warn { color:var(--flag); background:var(--flag-bg); font-weight:600; }
+
+  .news { margin-top:9px; font-size:13px; line-height:1.4; color:var(--ink); }
+  .news .src { color:var(--ink-3); font-size:11.5px; display:block; margin-top:2px; }
+  .news a { color:inherit; text-decoration:none; border-bottom:1px solid var(--line); }
+  .news a:hover { border-bottom-color:var(--ink-2); }
+  .nonews { margin-top:9px; font-size:12.5px; color:var(--ink-3); font-style:italic; }
+
+  /* Past earnings reactions: sign carried by position above/below the rule,
+     not by colour alone. */
+  .moves { display:flex; align-items:center; gap:3px; height:26px; margin-top:9px; }
+  .moves i { width:9px; border-radius:2px; display:block; }
+  .moves i.u { background:var(--up); } .moves i.d { background:var(--down); }
+  .moves .lab { font-size:11px; color:var(--ink-3); margin-left:5px; align-self:center; }
+
+  footer { padding:26px 16px 0; color:var(--ink-3); font-size:12px; line-height:1.55; }
+  footer a { color:var(--ink-2); }
+  footer .disc { margin-top:12px; padding:12px 13px; background:var(--surface);
+                 border:1px solid var(--line); border-radius:9px; color:var(--ink-2);
+                 font-size:12px; }
+  footer .disc b { color:var(--ink); }
+  [hidden] { display:none !important; }
+  @media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
+</style>
+
+</head>
+<body>
+<script>window.__SCANS__={"intraday":{"scanned":219,"universe":574,"sections":[{"key":"gap_up","title":"Gapping up","rows":[{"sym":"SNDK","score":92,"kind":"stock","gap":11.464382407603905,"days":null,"emove":null,"moves":[],"px":1554.99,"atr":7.071428571428573,"vol":82.18588855700968,"exp":0.6047412582863841,"rvol":0.6350852435033578,"flags":["Gap up","Gap exceeds typical daily range"],"why":"Overnight gap + Catalyst","news":{"t":"Why Sandisk Stock Rallied Today","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/why-sandisk-stock-rallied-today"}},{"sym":"MU","score":89,"kind":"stock","gap":5.924897720631195,"days":null,"emove":null,"moves":[],"px":958.16,"atr":4.907901603072559,"vol":50.81875406441139,"exp":0.5242488119124484,"rvol":0.8556731040758181,"flags":["Gap up","Gap exceeds typical daily range"],"why":"Overnight gap + Catalyst","news":{"t":"David Tepper Sold 41% of His Micron Shares and It Is Still His Second-Biggest Holding","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/david-tepper-sold-41-his-micron-shares-and-it-still-his-second-biggest-holding"}},{"sym":"ALAB","score":86,"kind":"stock","gap":7.379251820946187,"days":null,"emove":null,"moves":[],"px":282.82,"atr":6.65807631305121,"vol":51.48887605185427,"exp":0.4920440072817015,"rvol":0.8332981717189366,"flags":["Gap up","Gap exceeds typical daily range"],"why":"Overnight gap + Volume vs average","news":{"t":"Better Artificial Intelligence Stock: Astera Labs vs. NVIDIA","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/better-artificial-intelligence-stock-astera-labs-vs-nvidia"}},{"sym":"CEG","score":82,"kind":"stock","gap":4.78863357305737,"days":null,"emove":null,"moves":[],"px":285.05,"atr":3.296664745533368,"vol":31.015566898063817,"exp":0.8726905189284209,"rvol":1.2436812997853195,"flags":["Gap up","Gap exceeds typical daily range"],"why":"Overnight gap + Catalyst","news":{"t":"S\u0026P 500 Analyst Moves: CEG","p":"BNK Invest","u":"https://www.nasdaq.com/articles/sp-500-analyst-moves-ceg-0"}},{"sym":"INTC","score":82,"kind":"stock","gap":4.603468964764916,"days":null,"emove":null,"moves":[],"px":91.67,"atr":4.628629088812358,"vol":45.48402992756875,"exp":0.590472002969379,"rvol":0.8261859697893513,"flags":["Gap up"],"why":"Overnight gap + Catalyst","news":{"t":"Intel Witnesses an Uptrend in Estimate Revisions: Is it Worth Buying?","p":"Zacks","u":"https://www.nasdaq.com/articles/intel-witnesses-uptrend-estimate-revisions-it-worth-buying"}},{"sym":"MRVL","score":81,"kind":"stock","gap":6.409328161662585,"days":null,"emove":null,"moves":[],"px":208.83,"atr":7.803520977418405,"vol":78.65879098211198,"exp":0.8328036440505445,"rvol":0.7726040614841504,"flags":["Gap up"],"why":"Overnight gap + Catalyst","news":{"t":"Why Marvell Stock Rallied Today","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/why-marvell-stock-rallied-today"}},{"sym":"WDC","score":79,"kind":"stock","gap":5.555178114455246,"days":null,"emove":null,"moves":[],"px":441.57,"atr":6.392240026658127,"vol":63.80247259967201,"exp":0.6322820994765065,"rvol":0.7549406208590294,"flags":["Gap up"],"why":"Overnight gap + Catalyst","news":{"t":"Noteworthy Friday Option Activity: WDC, VLO, LYV","p":"BNK Invest","u":"https://www.nasdaq.com/articles/noteworthy-friday-option-activity-wdc-vlo-lyv"}},{"sym":"GLW","score":75,"kind":"stock","gap":5.559109589041093,"days":null,"emove":null,"moves":[],"px":146.0,"atr":4.939794520547945,"vol":59.844779367595095,"exp":0.6496120380167455,"rvol":0.9626004053834911,"flags":["Gap up","Gap exceeds typical daily range"],"why":"Overnight gap + Catalyst","news":{"t":"If a Bear Market Is Coming, This Growth Stock Might Be a Great Buy on the Dip","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/if-bear-market-coming-growth-stock-might-be-great-buy-dip"}},{"sym":"KLAC","score":73,"kind":"stock","gap":7.326240314559971,"days":null,"emove":null,"moves":[],"px":172.94,"atr":4.107039600852486,"vol":40.71328622893388,"exp":0.5005388968887962,"rvol":0.7489859508470699,"flags":["Gap up","Gap exceeds typical daily range"],"why":"Overnight gap + Volume vs average","news":{"t":"Teradyne Stock Plunges 15% in a Month: Should You Buy the Dip?","p":"Zacks","u":"https://www.nasdaq.com/articles/teradyne-stock-plunges-15-month-should-you-buy-dip"}},{"sym":"NRG","score":71,"kind":"stock","gap":5.954935622317594,"days":null,"emove":null,"moves":[],"px":111.84,"atr":3.953434753729816,"vol":42.4541066041982,"exp":0.7300786948787262,"rvol":0.9276735684545862,"flags":["Gap up","Gap exceeds typical daily range"],"why":"Overnight gap + Volume vs average","news":{"t":"NRG Energy (NRG) Q2 2026 Earnings Call Transcript","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/nrg-energy-nrg-q2-2026-earnings-call-transcript"}},{"sym":"SMCI","score":71,"kind":"stock","gap":4.423818325851578,"days":null,"emove":null,"moves":[],"px":37.87,"atr":5.721264476215629,"vol":81.91985966389109,"exp":0.7076347763151897,"rvol":0.6448934269296754,"flags":["Gap up","Catalyst not checked"],"why":"Overnight gap + Daily range (ATR%)","news":null},{"sym":"ARM","score":71,"kind":"stock","gap":3.9201945669648337,"days":null,"emove":null,"moves":[],"px":242.59,"atr":5.917391483573107,"vol":48.612585955972094,"exp":0.564089404290607,"rvol":1.0947480649900234,"flags":["Gap up","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"ARKK","score":70,"kind":"etf","gap":4.4969420793860175,"days":null,"emove":null,"moves":[],"px":87.14,"atr":2.907906816616934,"vol":41.49481222799592,"exp":1.07412766704004,"rvol":1.7690454525992014,"flags":["Gap up","Gap exceeds typical daily range","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"AMD","score":69,"kind":"stock","gap":4.363512802525434,"days":null,"emove":null,"moves":[],"px":456.16,"atr":3.896864195520368,"vol":42.73928747523046,"exp":0.5917873924790422,"rvol":0.8105612636654292,"flags":["Gap up","Gap exceeds typical daily range","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"EL","score":68,"kind":"stock","gap":2.9645052548086404,"days":null,"emove":null,"moves":[],"px":100.86,"atr":4.0878728647913665,"vol":62.33292828507787,"exp":1.3946949426511586,"rvol":0.5528221964330216,"flags":["Gap up","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"STX","score":67,"kind":"stock","gap":6.185747736692501,"days":null,"emove":null,"moves":[],"px":798.61,"atr":6.066120241061703,"vol":70.17210479753987,"exp":0.8229494556529505,"rvol":0.7566049875302698,"flags":["Gap up","Gap exceeds typical daily range"],"why":"Overnight gap + Catalyst","news":{"t":"WDC Stock's Big Rally: Buy, Sell, or Hold After a 70% 6-Month Surge?","p":"Zacks","u":"https://www.nasdaq.com/articles/wdc-stocks-big-rally-buy-sell-or-hold-after-70-6-month-surge"}},{"sym":"VST","score":66,"kind":"stock","gap":3.7858826792400553,"days":null,"emove":null,"moves":[],"px":144.22,"atr":3.300849892030032,"vol":29.1186207473324,"exp":0.6512331108505746,"rvol":1.0408449590943347,"flags":["Gap up","Gap exceeds typical daily range","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"FLEX","score":65,"kind":"stock","gap":1.9371582167022,"days":null,"emove":null,"moves":[],"px":107.89,"atr":4.703202997762271,"vol":48.88510354376057,"exp":0.6853643147867154,"rvol":1.3018977531381881,"flags":["Gap up","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"SWKS","score":65,"kind":"stock","gap":3.5244755244755193,"days":null,"emove":null,"moves":[],"px":71.5,"atr":4.200689310689313,"vol":37.26410713907937,"exp":0.7604115793624593,"rvol":0.7401455188185828,"flags":["Gap up","Catalyst not checked"],"why":"Overnight gap + Catalyst","news":null},{"sym":"VRT","score":64,"kind":"stock","gap":4.24803779340104,"days":null,"emove":null,"moves":[],"px":268.83,"atr":4.733012365754248,"vol":47.14448890570359,"exp":0.61880277223261,"rvol":1.0440728713440024,"flags":["Gap up","Catalyst not checked"],"why":"Overnight gap + Catalyst","news":null},{"sym":"TER","score":64,"kind":"stock","gap":5.395024522838755,"days":null,"emove":null,"moves":[],"px":338.59,"atr":6.217083029200932,"vol":61.8200774948207,"exp":0.6722446397170345,"rvol":0.6904534398808396,"flags":["Gap up"],"why":"Overnight gap + Daily range (ATR%)","news":{"t":"AVGO Q3 Earnings Beat Estimates, Revenues Rise on Strong AI Demand","p":"Zacks","u":"https://www.nasdaq.com/articles/avgo-q3-earnings-beat-estimates-revenues-rise-strong-ai-demand"}},{"sym":"ASML","score":63,"kind":"stock","gap":3.9381845351994555,"days":null,"emove":null,"moves":[],"px":1646.19,"atr":2.7907032949676873,"vol":30.777882727741222,"exp":0.5848025238931382,"rvol":1.2731502173402378,"flags":["Gap up","Gap exceeds typical daily range","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"JBHT","score":62,"kind":"stock","gap":2.8128286014721384,"days":null,"emove":null,"moves":[],"px":266.28,"atr":3.2245193029893358,"vol":35.29837205592908,"exp":1.0290682171117609,"rvol":1.541075849398044,"flags":["Gap up","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"LUV","score":61,"kind":"stock","gap":2.6181254841208443,"days":null,"emove":null,"moves":[],"px":38.73,"atr":2.851148980118772,"vol":29.214275555259057,"exp":0.7476504612886153,"rvol":1.1331444387682497,"flags":["Gap up","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"HPQ","score":61,"kind":"stock","gap":2.2599436266833766,"days":null,"emove":null,"moves":[],"px":31.93,"atr":4.3690662610174025,"vol":50.48080175142082,"exp":1.130151397476485,"rvol":0.9026121168486037,"flags":["Gap up","Catalyst not checked"],"why":"Overnight gap + Catalyst","news":null}]},{"key":"gap_down","title":"Gapping down","rows":[{"sym":"ADSK","score":92,"kind":"stock","gap":-8.239306163691488,"days":null,"emove":null,"moves":[],"px":237.52,"atr":4.334822932204205,"vol":43.55721271358676,"exp":0.9747122996955601,"rvol":1.2718194667775964,"flags":["Gap down","Gap exceeds typical daily range"],"why":"Overnight gap + Catalyst","news":{"t":"Noteworthy Friday Option Activity: ADSK, AMAT, GLW","p":"BNK Invest","u":"https://www.nasdaq.com/articles/noteworthy-friday-option-activity-adsk-amat-glw"}},{"sym":"LULU","score":92,"kind":"stock","gap":-17.517943664285124,"days":null,"emove":null,"moves":[],"px":121.77,"atr":3.883592017738359,"vol":41.600196613724286,"exp":1.0764881774816222,"rvol":4.745928764638438,"flags":["Gap down","Gap exceeds typical daily range"],"why":"Overnight gap + Catalyst","news":{"t":"Why Lululemon Stock Crashed Today","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/why-lululemon-stock-crashed-today"}},{"sym":"FICO","score":91,"kind":"stock","gap":-16.438025613756004,"days":null,"emove":null,"moves":[],"px":1118.93,"atr":3.7270172652189384,"vol":42.894988969562306,"exp":0.7319517782222981,"rvol":0.7652432957624562,"flags":["Gap down","Gap exceeds typical daily range"],"why":"Overnight gap + Catalyst","news":{"t":"Why Fair Isaac Stock Crashed Today","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/why-fair-isaac-stock-crashed-today"}},{"sym":"TSLA","score":89,"kind":"stock","gap":-6.239953236884411,"days":null,"emove":null,"moves":[],"px":376.365,"atr":3.7509180867357133,"vol":44.99815144191094,"exp":0.7757428293169683,"rvol":1.8275005676728946,"flags":["Gap down","Gap exceeds typical daily range"],"why":"Overnight gap + Catalyst","news":{"t":"Tesla Launched the Cybercab Thursday, 6 Weeks After Removing Volume Production of It From This Year's Plan","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/tesla-launched-cybercab-thursday-6-weeks-after-removing-volume-production-it-years-plan"}},{"sym":"ADBE","score":81,"kind":"stock","gap":-6.631671041119856,"days":5,"emove":null,"moves":[],"px":285.75,"atr":3.442839645044365,"vol":42.591725950141566,"exp":0.8612985976356013,"rvol":0.8281376231036416,"flags":["Gap down","Gap exceeds typical daily range"],"why":"Overnight gap + Volume vs average","news":{"t":"Adobe Names Anil Chakravarthy As Next CEO","p":"RTTNews","u":"https://www.nasdaq.com/articles/adobe-names-anil-chakravarthy-next-ceo"}},{"sym":"HPE","score":75,"kind":"stock","gap":-4.27387950036738,"days":null,"emove":null,"moves":[],"px":54.44,"atr":5.349913404009655,"vol":49.62290454136971,"exp":0.8942318872409717,"rvol":4.043226774001528,"flags":["Gap down","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"ALB","score":73,"kind":"stock","gap":-4.1162227602905554,"days":null,"emove":null,"moves":[],"px":132.16,"atr":4.114260852646142,"vol":45.17897949430667,"exp":0.9647052609643284,"rvol":1.3870992400151874,"flags":["Gap down","Gap exceeds typical daily range","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"SNPS","score":71,"kind":"stock","gap":-5.370997573923269,"days":null,"emove":null,"moves":[],"px":416.31,"atr":3.774659680114751,"vol":57.79705045643643,"exp":1.3052685627188776,"rvol":0.8762924669425339,"flags":["Gap down","Gap exceeds typical daily range"],"why":"Overnight gap + Volume vs average","news":{"t":"Synopsys (SNPS) Q3 2026 Earnings Call Transcript","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/synopsys-snps-q3-2026-earnings-call-transcript"}},{"sym":"CDNS","score":71,"kind":"stock","gap":-3.717917179171785,"days":null,"emove":null,"moves":[],"px":304.875,"atr":3.6269524980964065,"vol":40.42285315847706,"exp":1.0619072317355824,"rvol":1.0295911133532873,"flags":["Gap down","Gap exceeds typical daily range","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"EFX","score":70,"kind":"stock","gap":-5.864932042942516,"days":null,"emove":null,"moves":[],"px":189.09,"atr":3.163361362314243,"vol":35.029282567364035,"exp":0.7943526313696047,"rvol":0.7250739043965126,"flags":["Gap down","Gap exceeds typical daily range"],"why":"Overnight gap + Volume vs average","news":{"t":"Equifax Now #375 Largest Company, Surpassing Amcor","p":"BNK Invest","u":"https://www.nasdaq.com/articles/equifax-now-375-largest-company-surpassing-amcor"}},{"sym":"PTC","score":69,"kind":"stock","gap":-5.883528784648195,"days":null,"emove":null,"moves":[],"px":150.08,"atr":2.989234313128236,"vol":35.08498525611664,"exp":0.718886925710668,"rvol":1.0871350400287028,"flags":["Gap down","Gap exceeds typical daily range"],"why":"Overnight gap + Volume vs average","news":{"t":"PTC (PTC) Q3 2026 Earnings Call Transcript","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/ptc-ptc-q3-2026-earnings-call-transcript"}},{"sym":"TTD","score":68,"kind":"stock","gap":-4.439363817097417,"days":null,"emove":null,"moves":[],"px":15.09,"atr":3.6944049985799476,"vol":100.88545718659978,"exp":1.4383519631200181,"rvol":0.7741401329242199,"flags":["Gap down","Gap exceeds typical daily range","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"COIN","score":68,"kind":"stock","gap":-4.075765438505441,"days":null,"emove":null,"moves":[],"px":192.7,"atr":6.69773519163763,"vol":81.40747111930698,"exp":1.1426155877744177,"rvol":1.4367084255437281,"flags":["Gap down","Catalyst not checked"],"why":"Overnight gap + Daily range (ATR%)","news":null},{"sym":"HOOD","score":66,"kind":"stock","gap":-2.085792174470813,"days":null,"emove":null,"moves":[],"px":124.72,"atr":5.815878997525885,"vol":87.18328071402645,"exp":1.1769992410986543,"rvol":2.8096377320199557,"flags":["Gap down","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"NFLX","score":66,"kind":"stock","gap":-5.249909277851708,"days":null,"emove":null,"moves":[],"px":82.67,"atr":2.6971262679500243,"vol":32.945724989418046,"exp":0.8949847995321651,"rvol":0.8722924776379937,"flags":["Gap down","Gap exceeds typical daily range"],"why":"Overnight gap + Volume vs average","news":{"t":"Why Netflix Stock Gained 13% in August","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/why-netflix-stock-gained-13-august"}},{"sym":"ACN","score":65,"kind":"stock","gap":-3.448632974316485,"days":null,"emove":null,"moves":[],"px":193.12,"atr":3.3987010297076585,"vol":34.99746401697426,"exp":0.5677006695900783,"rvol":1.0842625220260513,"flags":["Gap down","Gap exceeds typical daily range","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"PLTR","score":63,"kind":"stock","gap":-4.402728318632559,"days":null,"emove":null,"moves":[],"px":182.53,"atr":4.323469331851515,"vol":60.90432722700655,"exp":0.798817055945923,"rvol":1.063913177067723,"flags":["Gap down","Gap exceeds typical daily range","Catalyst not checked"],"why":"Overnight gap + Catalyst","news":null},{"sym":"PYPL","score":63,"kind":"stock","gap":-3.140437544107271,"days":null,"emove":null,"moves":[],"px":56.82,"atr":3.5997133806003916,"vol":56.62552223806993,"exp":1.0978023576065281,"rvol":1.2666316651595382,"flags":["Gap down","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"DASH","score":63,"kind":"stock","gap":-4.675675675675674,"days":null,"emove":null,"moves":[],"px":222.0,"atr":3.45629021879022,"vol":28.611705046170343,"exp":0.6500042920833826,"rvol":0.7352465331820035,"flags":["Gap down","Gap exceeds typical daily range"],"why":"Overnight gap + Volume vs average","news":{"t":"New Analyst Forecast: $DASH Given $275.0 Price Target","p":"Quiver Quantitative","u":"https://www.nasdaq.com/articles/new-analyst-forecast-dash-given-2750-price-target"}},{"sym":"INTU","score":62,"kind":"stock","gap":-3.42724368283474,"days":null,"emove":null,"moves":[],"px":344.3,"atr":4.546560308700885,"vol":45.51758995624267,"exp":1.0128204173021957,"rvol":0.9283651874862882,"flags":["Gap down","Catalyst not checked"],"why":"Overnight gap + Catalyst","news":null},{"sym":"TRI","score":62,"kind":"stock","gap":-4.3217609162491035,"days":null,"emove":null,"moves":[],"px":111.76,"atr":3.565746753246753,"vol":41.536115861830034,"exp":0.7545395725481412,"rvol":1.1061221381656978,"flags":["Gap down","Gap exceeds typical daily range","Catalyst not checked"],"why":"Overnight gap + Catalyst","news":null},{"sym":"AMGN","score":60,"kind":"stock","gap":-6.556808970548496,"days":null,"emove":null,"moves":[],"px":444.12,"atr":2.0925795473552835,"vol":21.139027215089374,"exp":0.7973092490349697,"rvol":0.8064753832757958,"flags":["Gap down","Gap exceeds typical daily range"],"why":"Overnight gap + Catalyst","news":{"t":"Amgen's Repatha Cuts Death Risk 20% In High-Risk Patients Without Prior Heart Attack Or Stroke","p":"RTTNews","u":"https://www.nasdaq.com/articles/amgens-repatha-cuts-death-risk-20-high-risk-patients-without-prior-heart-attack-or-stroke"}},{"sym":"TMUS","score":59,"kind":"stock","gap":-3.483671949792581,"days":null,"emove":null,"moves":[],"px":188.02,"atr":2.0868904523834844,"vol":21.825088463323773,"exp":0.5383258538626824,"rvol":0.8307176977172182,"flags":["Gap down","Gap exceeds typical daily range","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"FDS","score":59,"kind":"stock","gap":-3.514826175869138,"days":null,"emove":null,"moves":[],"px":312.96,"atr":3.552019427402863,"vol":35.52105910685129,"exp":0.7041948296942084,"rvol":0.7849460810217322,"flags":["Gap down","Catalyst not checked"],"why":"Overnight gap + Catalyst","news":null},{"sym":"LRCX","score":59,"kind":"stock","gap":-1.8041413244037359,"days":null,"emove":null,"moves":[],"px":292.66,"atr":4.7075128623170714,"vol":48.03822340523497,"exp":0.5774506778804812,"rvol":0.9746505052359444,"flags":["Gap down","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null}]},{"key":"leveraged","title":"Leveraged \u0026 volatility products","rows":[{"sym":"SOXS","score":80,"kind":"etf","gap":-9.631589147286826,"days":null,"emove":null,"moves":[],"px":51.6,"atr":8.039465669988926,"vol":93.46727275651848,"exp":0.5155700952093887,"rvol":0.8587511330082779,"flags":["Gap down","Gap exceeds typical daily range"],"why":"Overnight gap + Volume vs average","news":{"t":"SOXS: Large Outflows Detected at ETF","p":"BNK Invest","u":"https://www.nasdaq.com/articles/soxs-large-outflows-detected-etf"}},{"sym":"SOXL","score":72,"kind":"etf","gap":9.228030728873893,"days":null,"emove":null,"moves":[],"px":106.74,"atr":10.393767231456948,"vol":96.4065708603841,"exp":0.5539573122271945,"rvol":1.013471790050847,"flags":["Gap up"],"why":"Overnight gap + Catalyst","news":{"t":"SOXL, MPWR, NXPI, ALAB: Large Outflows Detected at ETF","p":"BNK Invest","u":"https://www.nasdaq.com/articles/soxl-mpwr-nxpi-alab-large-outflows-detected-etf-0"}},{"sym":"UPRO","score":56,"kind":"etf","gap":3.077645165616202,"days":null,"emove":null,"moves":[],"px":153.73,"atr":2.1023733633178785,"vol":24.71844396315958,"exp":0.6353153720701133,"rvol":1.0842424678397231,"flags":["Gap up","Gap exceeds typical daily range","Catalyst not checked"],"why":"Overnight gap + Volume vs average","news":null},{"sym":"LABU","score":44,"kind":"etf","gap":-1.9082133350437729,"days":null,"emove":null,"moves":[],"px":305.86,"atr":8.282608289506872,"vol":96.5220373745254,"exp":1.0923232745017601,"rvol":0.5053602989916424,"flags":["Gap down","Catalyst not checked"],"why":"Overnight gap + Catalyst","news":null},{"sym":"TNA","score":36,"kind":"etf","gap":1.16635077999708,"days":null,"emove":null,"moves":[],"px":69.39,"atr":3.1552714471002425,"vol":38.08441728108167,"exp":0.8536064299086997,"rvol":0.7768256300178329,"flags":["Gap up","Catalyst not checked"],"why":"Catalyst + Overnight gap","news":null},{"sym":"TZA","score":34,"kind":"etf","gap":-1.1078286558345711,"days":null,"emove":null,"moves":[],"px":40.17,"atr":2.9698424552793496,"vol":37.6426164834757,"exp":0.8380267861952946,"rvol":0.9046647542266152,"flags":["Gap down","Catalyst not checked"],"why":"Catalyst + Volume vs average","news":null},{"sym":"SVXY","score":20,"kind":"etf","gap":1.062985879739809,"days":null,"emove":null,"moves":[],"px":63.7,"atr":1.127932271809823,"vol":13.695541982823512,"exp":0.6056829103480043,"rvol":0.8093360882166972,"flags":["Gap up","Catalyst not checked"],"why":"Catalyst + Volume vs average","news":null}]}]},"swing":{"scanned":571,"universe":574,"sections":[{"key":"stocks","title":"Stocks \u2014 volatility expanding","rows":[{"sym":"HOOD","score":96,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":124.72,"atr":5.815878997525885,"vol":87.18328071402645,"exp":1.1769992410986543,"rvol":2.8096377320199557,"flags":[],"why":"Vol expansion + Relative volume","news":{"t":"What's the Better Buy Right Now: Robinhood or Solana?","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/whats-better-buy-right-now-robinhood-or-solana"}},{"sym":"CIEN","score":96,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":317.46,"atr":8.023494523494525,"vol":83.06658901025827,"exp":1.0824960533968684,"rvol":3.778946037355103,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"Why Ciena Stock Just Crashed","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/why-ciena-stock-just-crashed"}},{"sym":"MSTR","score":95,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":144.82,"atr":6.847771617969105,"vol":101.55425537093016,"exp":1.1546508578857864,"rvol":1.7319690699179067,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"Strategy Announces AI Transformation Forum With Google Cloud Across US","p":"RTTNews","u":"https://www.nasdaq.com/articles/strategy-announces-ai-transformation-forum-google-cloud-across-us"}},{"sym":"DELL","score":94,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":516.39,"atr":5.846411765194081,"vol":81.4773753051531,"exp":1.0454268786550416,"rvol":2.779598038448951,"flags":[],"why":"Vol expansion + Relative volume","news":{"t":"One of Trump's Favorite Stocks Just Reported Blowout Earnings","p":"MarketBeat","u":"https://www.nasdaq.com/articles/one-trumps-favorite-stocks-just-reported-blowout-earnings"}},{"sym":"EIX","score":92,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":56.3,"atr":7.631552905353971,"vol":107.87475627474674,"exp":1.6435595777528273,"rvol":1.3983523675747778,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"Why Edison International Stock Withered on Wednesday","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/why-edison-international-stock-withered-wednesday"}},{"sym":"PANW","score":91,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":331.94,"atr":6.221130755127864,"vol":71.11506795048554,"exp":1.2156712791858568,"rvol":1.1403365896525637,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"After an 80% Gain on the Year, Is Palo Alto Networks Stock a Buy on Its Recent Pullback as Revenue Surges?","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/after-80-gain-year-palo-alto-networks-stock-buy-its-recent-pullback-revenue-surges"}},{"sym":"CRWD","score":91,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":214.97,"atr":6.478099934210088,"vol":92.33080856542867,"exp":1.3796549469646364,"rvol":1.2112469661124003,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"AI Is Driving an Increased Need for Cybersecurity. Here's the Best Way to Invest.","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/ai-driving-increased-need-cybersecurity-heres-best-way-invest"}},{"sym":"PCG","score":89,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":13.96,"atr":7.632060990585343,"vol":94.58441153391213,"exp":1.6444673125970686,"rvol":1.4512388564116605,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"Why PG\u0026E Stock Keeps Going Down","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/why-pge-stock-keeps-going-down"}},{"sym":"LULU","score":87,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":121.77,"atr":3.883592017738359,"vol":41.600196613724286,"exp":1.0764881774816222,"rvol":4.745928764638438,"flags":[],"why":"Vol expansion + Relative volume","news":{"t":"Why Lululemon Stock Crashed Today","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/why-lululemon-stock-crashed-today"}},{"sym":"ADSK","score":87,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":237.52,"atr":4.334822932204205,"vol":43.55721271358676,"exp":0.9747122996955601,"rvol":1.2718194667775964,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"Noteworthy Friday Option Activity: ADSK, AMAT, GLW","p":"BNK Invest","u":"https://www.nasdaq.com/articles/noteworthy-friday-option-activity-adsk-amat-glw"}},{"sym":"CRM","score":85,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":264.43,"atr":4.326378571698692,"vol":77.60771565338878,"exp":1.323446137397232,"rvol":0.9814134910207424,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"Daily Dividend Report: CRM,HOG,DIN,ESS,ASO","p":"BNK Invest","u":"https://www.nasdaq.com/articles/daily-dividend-report-crmhogdinessaso"}},{"sym":"COIN","score":85,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":192.7,"atr":6.69773519163763,"vol":81.40747111930698,"exp":1.1426155877744177,"rvol":1.4367084255437281,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"Coinbase vs. Nasdaq: Which Trading Platform Stock Is the Better Buy?","p":"Zacks","u":"https://www.nasdaq.com/articles/coinbase-vs-nasdaq-which-trading-platform-stock-better-buy"}},{"sym":"NOW","score":84,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":145.59,"atr":4.597141679667952,"vol":62.71567401109536,"exp":1.0409795387147005,"rvol":1.0011442286588215,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"ServiceNow Says AI Is Driving Growth, Not Budget Pressure","p":"MarketBeat","u":"https://www.nasdaq.com/articles/servicenow-says-ai-driving-growth-not-budget-pressure"}},{"sym":"CHTR","score":84,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":151.38,"atr":5.418955136553231,"vol":61.34921191809675,"exp":1.1070734885797848,"rvol":1.4217376207446055,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"Charter Communications CFO Jessica Fischer Steps Down, Kevin Howard Named Interim\nreplacement","p":"RTTNews","u":"https://www.nasdaq.com/articles/charter-communications-cfo-jessica-fischer-steps-down-kevin-howard-named-interim"}},{"sym":"DDOG","score":84,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":214.76,"atr":5.727822419711041,"vol":70.63662318727899,"exp":1.0269641563151946,"rvol":0.9711576821209292,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"Datadog Stock: Buy or Sell?","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/datadog-stock-buy-or-sell"}},{"sym":"IBKR","score":83,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":92.95,"atr":3.765841850457232,"vol":47.13068864653795,"exp":1.0909814725426425,"rvol":1.245268440397155,"flags":[],"why":"Vol expansion + Relative volume","news":{"t":"Is Interactive Brokers Quietly Becoming an AI Stock?","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/interactive-brokers-quietly-becoming-ai-stock"}},{"sym":"AON","score":83,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":327.0,"atr":3.126406727828747,"vol":40.459759029782695,"exp":1.1761001126688841,"rvol":1.5192027256879834,"flags":[],"why":"Vol expansion + Relative volume","news":{"t":"Oversold Conditions For Aon","p":"BNK Invest","u":"https://www.nasdaq.com/articles/oversold-conditions-aon"}},{"sym":"PYPL","score":82,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":56.82,"atr":3.5997133806003916,"vol":56.62552223806993,"exp":1.0978023576065281,"rvol":1.2666316651595382,"flags":[],"why":"Vol expansion + Relative volume","news":{"t":"Ex-Div Reminder for PayPal Holdings (PYPL)","p":"BNK Invest","u":"https://www.nasdaq.com/articles/ex-div-reminder-paypal-holdings-pypl"}},{"sym":"TTWO","score":82,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":214.13,"atr":4.056197503519225,"vol":40.568426102651905,"exp":1.1171474968450457,"rvol":0.973487186471501,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"Should You Buy Take Two Stock Before the GTA 6 Release?","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/should-you-buy-take-two-stock-gta-6-release"}},{"sym":"TSN","score":82,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":51.76,"atr":2.7466190108191637,"vol":32.37084969705319,"exp":1.1162586934046244,"rvol":2.7303791799358397,"flags":[],"why":"Vol expansion + Relative volume","news":{"t":"Tyson Foods Cuts Annual Adj. Operating Income, Revenue Growth Outlook; Stock Down Nearly 8%","p":"RTTNews","u":"https://www.nasdaq.com/articles/tyson-foods-cuts-annual-adj-operating-income-revenue-growth-outlook-stock-down-nearly-8"}},{"sym":"DE","score":81,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":694.41,"atr":3.3543378037264913,"vol":39.91203802198494,"exp":1.1385468987026879,"rvol":1.296718506503735,"flags":[],"why":"Vol expansion + Relative volume","news":{"t":"Evercore ISI Group Upgrades Deere (DE) to Outperform from In-Line","p":"Fintel","u":"https://www.nasdaq.com/articles/evercore-isi-group-upgrades-deere-de-outperform-line"}},{"sym":"AXON","score":81,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":538.15,"atr":5.591895515058201,"vol":75.11346383433914,"exp":1.0066506543643,"rvol":0.9321305910981855,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"Insider Alert: Axon President Sells $9.6 Million in Stock","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/insider-alert-axon-president-sells-96-million-stock"}},{"sym":"ALB","score":81,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":132.16,"atr":4.114260852646142,"vol":45.17897949430667,"exp":0.9647052609643284,"rvol":1.3870992400151874,"flags":[],"why":"Vol expansion + Relative volume","news":{"t":"Albemarle Names Ragnar Udd CEO And President","p":"RTTNews","u":"https://www.nasdaq.com/articles/albemarle-names-ragnar-udd-ceo-and-president"}},{"sym":"CDNS","score":81,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":304.875,"atr":3.6269524980964065,"vol":40.42285315847706,"exp":1.0619072317355824,"rvol":1.0295911133532873,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"Cadence Design Systems Sees AI Agents Driving Chip Design Boom and Growth","p":"MarketBeat","u":"https://www.nasdaq.com/articles/cadence-design-systems-sees-ai-agents-driving-chip-design-boom-and-growth"}},{"sym":"HPQ","score":80,"kind":"stock","gap":null,"days":null,"emove":null,"moves":[],"px":31.93,"atr":4.3690662610174025,"vol":50.48080175142082,"exp":1.130151397476485,"rvol":0.9026121168486037,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"HP Unveils New OmniBook PCs Powered By NVIDIA RTX Spark","p":"RTTNews","u":"https://www.nasdaq.com/articles/hp-unveils-new-omnibook-pcs-powered-nvidia-rtx-spark"}}]},{"key":"etfs","title":"ETFs \u2014 volatility expanding","rows":[{"sym":"IBIT","score":90,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":46.35,"atr":3.3803051317614417,"vol":43.52287412641041,"exp":1.1538883357741,"rvol":1.5268014559194598,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"Crypto Market Today, Sept. 3: Bitcoin Reclaims $81,000 on Fed Rate Pause Signals","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/crypto-market-today-sept-3-bitcoin-reclaims-81000-fed-rate-pause-signals"}},{"sym":"GDX","score":83,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":101.49,"atr":3.8898272876990005,"vol":54.80600060843817,"exp":1.0639254716763473,"rvol":1.0967052075199881,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"Gold Is Still Historically High. Is VanEck Gold Miners ETF or Sprott Gold Miners ETF the Better Way to Play Bullion's Strength?","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/gold-still-historically-high-vaneck-gold-miners-etf-or-sprott-gold-miners-etf-better-way"}},{"sym":"HACK","score":79,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":111.53,"atr":3.4626301699734867,"vol":45.5072623989986,"exp":1.2740868259833824,"rvol":0.8814270477199241,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":{"t":"Cybersecurity Demand Fuels CrowdStrike's Earnings Beat: ETFs in Focus","p":"Zacks","u":"https://www.nasdaq.com/articles/cybersecurity-demand-fuels-crowdstrikes-earnings-beat-etfs-focus"}},{"sym":"EWZ","score":77,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":38.13,"atr":2.2084785133565616,"vol":25.346431707810428,"exp":1.1364109489025827,"rvol":1.0069332148817893,"flags":[],"why":"Vol expansion + 5-day move","news":{"t":"EWZ, NBIZ: Big ETF Outflows","p":"BNK Invest","u":"https://www.nasdaq.com/articles/ewz-nbiz-big-etf-outflows"}},{"sym":"ARKK","score":76,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":87.14,"atr":2.907906816616934,"vol":41.49481222799592,"exp":1.07412766704004,"rvol":1.7690454525992014,"flags":[],"why":"Vol expansion + Relative volume","news":{"t":"Cathie Wood's Ark Has Delivered Just a 13.8% Annualized Return Since 2014, Roughly Matching the S\u0026P 500. Should You Trust Her Bold Predictions for 2030?","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/cathie-woods-ark-has-delivered-just-138-annualized-return-2014-roughly-matching-sp-500"}},{"sym":"GLD","score":72,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":410.22,"atr":2.073798379963366,"vol":27.89306605417176,"exp":1.0264390433711548,"rvol":1.0233983313433623,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":null},{"sym":"URA","score":72,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":45.7,"atr":3.8575648640200058,"vol":46.12037508445294,"exp":1.013754091310068,"rvol":0.7664016685066338,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":null},{"sym":"SLV","score":68,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":60.55,"atr":3.241123038810904,"vol":39.4520413660224,"exp":0.9226320380930922,"rvol":0.8035798050820663,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":null},{"sym":"ITB","score":67,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":93.62,"atr":2.269051179540392,"vol":28.458954181818164,"exp":0.8613298421630823,"rvol":1.5033875840484534,"flags":[],"why":"Relative volume + Vol expansion","news":null},{"sym":"UNG","score":66,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":10.49,"atr":2.6420400381315505,"vol":25.829154873095096,"exp":0.8172135936482525,"rvol":2.146015336058073,"flags":[],"why":"Relative volume + Daily range (ATR%)","news":null}]},{"key":"leveraged","title":"Leveraged \u0026 volatility products","rows":[{"sym":"LABU","score":69,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":305.86,"atr":8.282608289506872,"vol":96.5220373745254,"exp":1.0923232745017601,"rvol":0.5053602989916424,"flags":[],"why":"Vol expansion + Daily range (ATR%)","news":null},{"sym":"SOXL","score":68,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":106.74,"atr":10.393767231456948,"vol":96.4065708603841,"exp":0.5539573122271945,"rvol":1.013471790050847,"flags":[],"why":"Daily range (ATR%) + Gap frequency","news":null},{"sym":"TNA","score":54,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":69.39,"atr":3.1552714471002425,"vol":38.08441728108167,"exp":0.8536064299086997,"rvol":0.7768256300178329,"flags":[],"why":"Vol expansion + 5-day move","news":null},{"sym":"UVXY","score":53,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":17.41,"atr":3.711085582998277,"vol":39.68187430222182,"exp":0.5842407749416427,"rvol":0.9763334779519389,"flags":[],"why":"Daily range (ATR%) + Vol expansion","news":null},{"sym":"TZA","score":52,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":40.17,"atr":2.9698424552793496,"vol":37.6426164834757,"exp":0.8380267861952946,"rvol":0.9046647542266152,"flags":[],"why":"Vol expansion + 5-day move","news":null},{"sym":"SOXS","score":50,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":51.6,"atr":8.039465669988926,"vol":93.46727275651848,"exp":0.5155700952093887,"rvol":0.8587511330082779,"flags":[],"why":"Daily range (ATR%) + 5-day move","news":null},{"sym":"VXX","score":48,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":17.62,"atr":2.4130452407977905,"vol":26.61131180368404,"exp":0.5894912987295851,"rvol":1.343737899387253,"flags":[],"why":"Relative volume + Vol expansion","news":null},{"sym":"SQQQ","score":46,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":38.34,"atr":3.481760935986288,"vol":40.189131813483,"exp":0.5511852292253023,"rvol":1.078774762331136,"flags":[],"why":"Relative volume + Daily range (ATR%)","news":null},{"sym":"TQQQ","score":44,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":72.03,"atr":3.4556236488764616,"vol":40.28286955761934,"exp":0.5674530269736205,"rvol":0.9700108223551354,"flags":[],"why":"Gap frequency + Relative volume","news":null},{"sym":"UPRO","score":42,"kind":"etf","gap":null,"days":null,"emove":null,"moves":[],"px":153.73,"atr":2.1023733633178785,"vol":24.71844396315958,"exp":0.6353153720701133,"rvol":1.0842424678397231,"flags":[],"why":"Vol expansion + Relative volume","news":null}]}]},"earnings":{"scanned":7,"universe":574,"sections":[{"key":"this_week","title":"Reporting within 7 days","rows":[{"sym":"ORCL","score":75,"kind":"stock","gap":null,"days":5,"emove":8.86,"moves":[9.18,-8.53],"px":154.04,"atr":4.005684979782619,"vol":49.92798002523852,"exp":0.8594777638930955,"rvol":1.1186009877457241,"flags":["Reports in 5d, after close"],"why":"Historical earnings move + Liquidity","news":{"t":"Why Is Oracle Stock Up Today?","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/why-oracle-stock-today"}},{"sym":"CASY","score":74,"kind":"stock","gap":null,"days":3,"emove":12.05,"moves":[3.82,20.29],"px":758.42,"atr":3.5459055856724686,"vol":35.21809076360928,"exp":0.6939296045905349,"rvol":1.1894738062929844,"flags":["Reports in 3d, after close","Earnings move \u22483x a normal day"],"why":"Historical earnings move + Reports soon","news":{"t":"Seeking Clues to Casey's (CASY) Q1 Earnings? A Peek Into Wall Street Projections for Key Metrics","p":"Zacks","u":"https://www.nasdaq.com/articles/seeking-clues-caseys-casy-q1-earnings-peek-wall-street-projections-key-metrics"}},{"sym":"ADBE","score":67,"kind":"stock","gap":null,"days":5,"emove":7.17,"moves":[-7.58,-6.76],"px":285.75,"atr":3.442839645044365,"vol":42.591725950141566,"exp":0.8612985976356013,"rvol":0.8281376231036416,"flags":["Reports in 5d, after close"],"why":"Historical earnings move + Liquidity","news":{"t":"Adobe Names Anil Chakravarthy As Next CEO","p":"RTTNews","u":"https://www.nasdaq.com/articles/adobe-names-anil-chakravarthy-next-ceo"}},{"sym":"KR","score":39,"kind":"stock","gap":null,"days":6,"emove":6.85,"moves":[5.27,-8.43],"px":58.51,"atr":2.2788778474985962,"vol":20.37473886884237,"exp":0.6264403975736558,"rvol":0.8956250501554204,"flags":["Reports in 6d, before open","Earnings move \u22483x a normal day"],"why":"Historical earnings move + Liquidity","news":{"t":"Murray's Cheese To Open Five Kiosks With Cave-Aged Offerings At Harris Teeter Stores In Charlotte","p":"RTTNews","u":"https://www.nasdaq.com/articles/murrays-cheese-open-five-kiosks-cave-aged-offerings-harris-teeter-stores-charlotte"}},{"sym":"COO","score":37,"kind":"stock","gap":null,"days":4,"emove":6.56,"moves":[-4.55,8.58],"px":70.64,"atr":2.140844928005176,"vol":23.08824793592069,"exp":0.8438371757753728,"rvol":1.2945821945065248,"flags":["Reports in 4d, after close","Earnings move \u22483x a normal day"],"why":"Reports soon + Historical earnings move","news":{"t":"Philips Shares AI Tool Data for Mitral Regurgitation Assessment at ESC","p":"Zacks","u":"https://www.nasdaq.com/articles/philips-shares-ai-tool-data-mitral-regurgitation-assessment-esc"}},{"sym":"CPRT","score":35,"kind":"stock","gap":null,"days":5,"emove":3.62,"moves":[-3.11,4.12],"px":33.58,"atr":3.460074023653538,"vol":42.63518271167065,"exp":1.0209797900462496,"rvol":0.843851140442478,"flags":["Reports in 5d, after close"],"why":"Vol already expanding + Reports soon","news":{"t":"Why Copart Stock Ticked 4% Higher on Thursday","p":"The Motley Fool","u":"https://www.nasdaq.com/articles/why-copart-stock-ticked-4-higher-thursday"}}]},{"key":"later","title":"Reporting in 8-14 days","rows":[{"sym":"LEN","score":23,"kind":"stock","gap":null,"days":11,"emove":4.92,"moves":[-4.17,5.68],"px":84.45,"atr":2.8414953903408646,"vol":33.61150850048922,"exp":0.8697588949877202,"rvol":0.9204018473256129,"flags":["Reports in 11d, after close"],"why":"Vol already expanding + Historical earnings move","news":{"t":"Noteworthy Friday Option Activity: LEN, KR, INTC","p":"BNK Invest","u":"https://www.nasdaq.com/articles/noteworthy-friday-option-activity-len-kr-intc"}}]}]}};</script>
+<div class="shell">
+<header class="top">
+  <div class="kicker">S&amp;P 500 &middot; Nasdaq-100 &middot; ETFs</div>
+  <h1>Volatility Desk</h1>
+  <div class="asof">Scan of <b>574 instruments</b> &middot; <b>2026-09-05</b></div>
+  <div class="freshness">Updated 2026-09-05 00:41 UTC. Refreshes every weekday, before the open and after the close.</div>
+</header>
+
+<nav class="tabs" aria-label="Choose a scan">
+  <div class="tabrow" role="tablist">
+    <button class="tab" role="tab" id="t-intraday" aria-controls="p-intraday"
+            aria-selected="true" data-p="intraday">
+      Pre-market<span class="sub">57 gapping</span></button>
+    <button class="tab" role="tab" id="t-swing" aria-controls="p-swing"
+            aria-selected="false" data-p="swing">
+      Swing<span class="sub">45 expanding</span></button>
+    <button class="tab" role="tab" id="t-earnings" aria-controls="p-earnings"
+            aria-selected="false" data-p="earnings">
+      Earnings<span class="sub">7 upcoming</span></button>
+  </div>
+</nav>
+
+<main id="panels"></main>
+
+<footer>
+  <p>
+    Scores are percentile ranks <em>within this scan</em> &mdash; a 90 means top-decile on
+    the day's inputs, not a probability and never a direction. Blue is up, red is down;
+    every signed number carries its sign, so colour never does the work alone.
+  </p>
+  <p>Ranked names moved 1.86x the universe over 1 session Read that as volatility clustering, not an edge.</p>
+  <div class="disc">
+    <b>Research tool, not advice.</b> It ranks instruments by how much they have been
+    moving and whether a dated catalyst is nearby. It does not know whether a move is
+    over, does not predict direction, and knows nothing about your sizing, spreads or
+    borrow. Data comes from free public feeds and can be wrong, stale or missing &mdash;
+    verify against your broker before trading.
+  </div>
+</footer>
+</div>
+<script>
+(function () {
+  "use strict";
+  var DATA = window.__SCANS__;
+
+  var COPY = {
+    intraday: {
+      gap_up:   "Trading above yesterday's close overnight.",
+      gap_down: "Trading below yesterday's close overnight.",
+      leveraged:"Geared products — the gap here is mostly the index's, amplified."
+    },
+    swing: {
+      stocks:   "Moving more than their own 60-day baseline.",
+      etfs:     "Funds, for trading a theme without single-name risk.",
+      leveraged:"Structurally volatile by design, so ranked apart."
+    },
+    earnings: {
+      this_week:"Dated catalysts landing within 7 days.",
+      later:    "Further out — for planning rather than acting."
+    }
+  };
+
+  function pct(v, signed) {
+    if (v === null || v === undefined) return null;
+    return (signed && v > 0 ? "+" : "") + v.toFixed(signed ? 2 : 1) + "%";
+  }
+  function money(v) {
+    if (v === null || v === undefined) return null;
+    return "$" + (v < 1000 ? v.toFixed(2) : Math.round(v).toLocaleString());
+  }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined && text !== null) n.textContent = text;
+    return n;
+  }
+
+  // The one number that answers "why is this on the list" for each scan.
+  function lead(profile, row) {
+    if (profile === "intraday") {
+      return { label: "gap", text: pct(row.gap, true), tone: row.gap > 0 ? "pos" : "neg" };
+    }
+    if (profile === "earnings") {
+      var d = row.days;
+      return {
+        label: "reports",
+        text: d === 0 ? "today" : d === 1 ? "tomorrow" : "in " + d + "d",
+        tone: ""
+      };
+    }
+    return { label: "vol expansion", text: row.exp ? row.exp.toFixed(2) + "x" : "—", tone: "" };
+  }
+
+  function stats(profile, row) {
+    var out = [];
+    if (profile === "intraday") {
+      out.push(["price", money(row.px)]);
+      out.push(["ATR", pct(row.atr)]);
+      out.push(["20d vol", pct(row.vol)]);
+    } else if (profile === "earnings") {
+      out.push(["median move", row.emove ? pct(row.emove) : "no history"]);
+      out.push(["ATR", pct(row.atr)]);
+      out.push(["price", money(row.px)]);
+    } else {
+      out.push(["ATR", pct(row.atr)]);
+      out.push(["RVOL", row.rvol ? row.rvol.toFixed(2) + "x" : null]);
+      out.push(["20d vol", pct(row.vol)]);
+    }
+    return out.filter(function (p) { return p[1]; });
+  }
+
+  function buildRow(profile, row, rank) {
+    var card = el("article", "row");
+
+    var r1 = el("div", "r1");
+    r1.appendChild(el("span", "rank mono", rank));
+    r1.appendChild(el("span", "sym mono", row.sym));
+    if (row.kind === "etf") r1.appendChild(el("span", "etf", "ETF"));
+
+    var L = lead(profile, row);
+    var wrap = el("div");
+    wrap.style.marginLeft = "auto";
+    wrap.style.textAlign = "right";
+    wrap.appendChild(el("span", "leadlab", L.label));
+    wrap.appendChild(el("span", "lead mono " + L.tone, L.text || "—"));
+    r1.appendChild(wrap);
+    card.appendChild(r1);
+
+    var r2 = el("div", "r2");
+    r2.appendChild(el("span", "scoreval", "score " + row.score));
+    var track = el("div", "track");
+    var fill = el("div", "fill");
+    fill.style.width = Math.max(0, Math.min(100, row.score)) + "%";
+    track.appendChild(fill);
+    r2.appendChild(track);
+    card.appendChild(r2);
+
+    var sr = el("div", "stats");
+    stats(profile, row).forEach(function (p) {
+      var s = el("span", "stat");
+      s.appendChild(document.createTextNode(p[0] + " "));
+      s.appendChild(el("b", "mono", p[1]));
+      sr.appendChild(s);
+    });
+    if (sr.childNodes.length) card.appendChild(sr);
+
+    // Past post-earnings reactions, oldest to newest.
+    if (profile === "earnings" && row.moves && row.moves.length) {
+      var peak = Math.max.apply(null, row.moves.map(Math.abs)) || 1;
+      var mv = el("div", "moves");
+      row.moves.slice(-6).forEach(function (m) {
+        var b = el("i", m >= 0 ? "u" : "d");
+        b.style.height = Math.max(4, Math.abs(m) / peak * 22) + "px";
+        b.title = (m > 0 ? "+" : "") + m.toFixed(1) + "%";
+        mv.appendChild(b);
+      });
+      mv.appendChild(el("span", "lab", "past prints"));
+      card.appendChild(mv);
+    }
+
+    if (row.flags && row.flags.length) {
+      var tags = el("div", "tags");
+      row.flags.forEach(function (f) {
+        var warn = /exceed|not checked|No visible|Earnings|Reports today|Reports tomorrow/.test(f);
+        tags.appendChild(el("span", "tag" + (warn ? " warn" : ""), f));
+      });
+      card.appendChild(tags);
+    }
+
+    if (row.news) {
+      var n = el("div", "news");
+      var a = el("a", null, row.news.t);
+      a.href = row.news.u;
+      a.rel = "noopener noreferrer";
+      a.target = "_blank";
+      n.appendChild(a);
+      n.appendChild(el("span", "src", row.news.p));
+      card.appendChild(n);
+    } else if (profile === "intraday") {
+      card.appendChild(el("div", "nonews", "No headline found for this move"));
+    }
+    return card;
+  }
+
+  function buildPanel(profile) {
+    var d = DATA[profile];
+    var panel = el("section");
+    panel.id = "p-" + profile;
+    panel.setAttribute("role", "tabpanel");
+    panel.setAttribute("aria-labelledby", "t-" + profile);
+
+    var pills = el("div", "pills");
+    pills.setAttribute("role", "tablist");
+    var blurb = el("p", "blurb");
+    var list = el("div", "list");
+
+    function show(i) {
+      var sec = d.sections[i];
+      Array.prototype.forEach.call(pills.children, function (b, j) {
+        b.setAttribute("aria-selected", j === i ? "true" : "false");
+      });
+      blurb.textContent = COPY[profile][sec.key] || "";
+      list.textContent = "";
+      sec.rows.forEach(function (row, n) {
+        list.appendChild(buildRow(profile, row, n + 1));
+      });
+    }
+
+    d.sections.forEach(function (sec, i) {
+      var b = el("button", "pill", sec.title + " (" + sec.rows.length + ")");
+      b.setAttribute("role", "tab");
+      b.addEventListener("click", function () { show(i); });
+      pills.appendChild(b);
+    });
+
+    panel.appendChild(pills);
+    panel.appendChild(blurb);
+    panel.appendChild(list);
+    show(0);
+    return panel;
+  }
+
+  var panels = document.getElementById("panels");
+  var built = {};
+  ["intraday", "swing", "earnings"].forEach(function (p) {
+    var node = buildPanel(p);
+    if (p !== "intraday") node.hidden = true;
+    built[p] = node;
+    panels.appendChild(node);
+  });
+
+  var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
+  tabs.forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      tabs.forEach(function (t) {
+        var on = t === tab;
+        t.setAttribute("aria-selected", on ? "true" : "false");
+        built[t.dataset.p].hidden = !on;
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
